@@ -4,12 +4,14 @@
   */
 
 
+import java.io.FileNotFoundException
+
 import scala.concurrent.ExecutionContext
 import scala.xml._
 import akka.actor._
 
 // object sent to RSSgetter actor
-case class RSSTarget(targetUrl: String)
+case class RSSTarget(tagetName: String, targetUrl: String)
 
 /**
   * actor to make call to target rss feed
@@ -18,20 +20,26 @@ case class RSSTarget(targetUrl: String)
   */
 class RSSGetter extends Actor with ActorLogging{
   def receive = {
-    case RSSTarget(url) =>
+    case RSSTarget(name, url) =>
       val response = io.Source.fromURL(url).mkString
       val xmlResponse = XML.loadString(response)
 
-      //debugging print the first title in the list of titles
-      val titles = xmlResponse \ "channel" \ "item" \ "title"
-      log.info(titles.head.text)
 
-      //TODO add data to db
-      //TODO check if there is any new content
-      //TODO update db with new content
+      //save the RSS file to the file system
+      val filename = "data/RSSXML/" + name + ".xml"
+      try{
+        log.info("writting to file " + filename)
+        XML.save(filename, xmlResponse)
+      } catch {
+        case e : Exception => log.error(e.toString)
+      }
+
+      //debugging print the first title in the list of titles
+      //      val titles = xmlResponse \ "channel" \ "item" \ "title"
+      //      log.info(titles.head.text)
+
       //clean up these actors as they are dynamically created
       context.stop(self)
-
   }
 }
 
@@ -39,7 +47,7 @@ class RSSGetter extends Actor with ActorLogging{
   * mainline app
   * every 10 minutes get list of subscribed feeds
   * create one actor per feed to call and get xml data
-  *
+  *.split(","
   */
 object RSSCollector extends App{
 
@@ -53,12 +61,12 @@ object RSSCollector extends App{
     */
   def RSSGo() = {
     // get list of target rss feeds from file and send to actors for processing
-    val fileName = "data/targetRSS.txt"
-    var num = 0
+    val fileName = "data/targetRSS.csv"
     for (line <- io.Source.fromFile(fileName).getLines()) {
-      num += 1
-      val act = system.actorOf(Props(new RSSGetter), "RSSGetter"+ num)
-      act ! RSSTarget(line)
+      val lineList = line.split(",")
+      val act = system.actorOf(Props(new RSSGetter), lineList(0))
+      //send name,url to actor for processing
+      act ! RSSTarget(lineList(0),lineList(1))
     }
   }
 
