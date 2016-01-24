@@ -1,0 +1,2 @@
+http://sfgov.org/news.xml
+https://legiscan.com/gaits/feed/efc9441e4fa82d447bab856bd69b3eeb.rss
