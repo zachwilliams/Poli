@@ -45,7 +45,6 @@ class RSSGetter extends Actor with ActorLogging{
   * mainline app
   * every 10 minutes get list of subscribed feeds
   * create one actor per feed to call and get xml data
-  *.split(","
   */
 object RSSCollector extends App{
 
