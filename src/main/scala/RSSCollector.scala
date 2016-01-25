@@ -3,9 +3,6 @@
   * Created by Zach on 1/24/16.
   */
 
-
-import java.io.FileNotFoundException
-
 import scala.concurrent.ExecutionContext
 import scala.xml._
 import akka.actor._
@@ -19,6 +16,7 @@ case class RSSTarget(tagetName: String, targetUrl: String)
   * prints debug info
   */
 class RSSGetter extends Actor with ActorLogging{
+
   def receive = {
     case RSSTarget(name, url) =>
       val response = io.Source.fromURL(url).mkString
@@ -28,11 +26,11 @@ class RSSGetter extends Actor with ActorLogging{
       //save the RSS file to the file system
       val filename = "data/RSSXML/" + name + ".xml"
       try{
+
         log.info("writting to file " + filename)
-        XML.save(filename, xmlResponse)
-      } catch {
-        case e : Exception => log.error(e.toString)
-      }
+        XML.save(filename, xmlResponse,"UTF-8")
+
+      } catch { case e : Exception => log.error(e.toString) }
 
       //debugging print the first title in the list of titles
       //      val titles = xmlResponse \ "channel" \ "item" \ "title"
