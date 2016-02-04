@@ -35,7 +35,8 @@ object Boot extends App {
     * save the xml files
     */
 //  system.scheduler.schedule(0 seconds,10 minutes)(RSSCollector.Go(system, filename))
-//  RSSCollector.Go(system)  // or just call once for debug
+  // or just call once for debug
+//  RSSCollector.Go(system,filename)
 
   //for debugging
 //  system.terminate()

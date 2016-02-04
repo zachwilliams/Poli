@@ -7,14 +7,16 @@ import scala.xml.XML
 
 
 
+// classes used by RSS Collector
+case class RSSTarget(tagetName: String, targetUrl: String)
 
 /**
   * actor to make call to target rss feed
   * receives a url to call
   * prints debug info
   */
-class RSSGetter extends Actor with ActorLogging{
 
+class RSSGetter extends Actor with ActorLogging{
   def receive = {
     case RSSTarget(name, url) =>
       val response = io.Source.fromURL(url).mkString

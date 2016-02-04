@@ -19,6 +19,7 @@ class RestServiceActor extends Actor with RestService {
   */
 trait RestService extends HttpService with ActorLogging {
   actor: Actor =>
+  import com.poc.poli.Protocol._
   def routes : Route = {
 
     val rssList = listAllRSS("data/targetRSS.csv") //TODO get rid of this hardcoded value!!!!!!
@@ -76,17 +77,19 @@ trait RestService extends HttpService with ActorLogging {
   *
   */
 class Responder(requestContext:RequestContext) extends Actor with ActorLogging {
+  import com.poc.poli.Protocol._
   def receive = {
     case record : RSSRecord =>
       requestContext.complete(StatusCodes.OK, record)
       killYourself()
+
+    case rsslist : RSSList =>
+      requestContext.complete(StatusCodes.OK, rsslist)
+      killYourself()
+
     case NotFound =>
       requestContext.complete(StatusCodes.NotFound)
       killYourself()
-    //    case rsslist : RSSList =>
-    //      requestContext.complete(StatusCodes.OK, rsslist)
-    //      killYourself
-
   }
 
   private def killYourself() = self ! PoisonPill
