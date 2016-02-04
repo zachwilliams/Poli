@@ -1,14 +1,12 @@
-/**
-  * RSS data getter
-  * Created by Zach on 1/24/16.
-  */
+package com.poc.poli
 
-import scala.concurrent.ExecutionContext
-import scala.xml._
 import akka.actor._
+import scala.concurrent.ExecutionContext
+import scala.xml.XML
 
-// object sent to RSSgetter actor
-case class RSSTarget(tagetName: String, targetUrl: String)
+
+
+
 
 /**
   * actor to make call to target rss feed
@@ -33,45 +31,36 @@ class RSSGetter extends Actor with ActorLogging{
       } catch { case e : Exception => log.error(e.toString) }
 
       //debugging print the first title in the list of titles
-      //      val titles = xmlResponse \ "channel" \ "item" \ "title"
-      //      log.info(titles.head.text)
+      //val titles = xmlResponse \ "channel" \ "item" \ "title"
+      //log.info(titles.head.text)
 
       //clean up these actors as they are dynamically created
-      context.stop(self)
+      //killYourself
+      self ! PoisonPill
   }
 }
-
 /**
-  * mainline app
-  * every 10 minutes get list of subscribed feeds
+  * mainline for RSS collection
+  * called every 10 minutes, gets list of subscribed feeds
   * create one actor per feed to call and get xml data
   */
-object RSSCollector extends App{
+object RSSCollector{
 
   // set implicit context for scheduler
   implicit val ec: ExecutionContext = scala.concurrent.ExecutionContext.Implicits.global
-  val system = ActorSystem("RSSRetrievalSystem")
+//  val system = ActorSystem("RSSRetrievalSystem")
 
   /**
     * function to read target rss feed list and
     * start an actor to process each one
     */
-  def RSSGo() = {
+  def Go(system: ActorSystem, filename: String) = {
     // get list of target rss feeds from file and send to actors for processing
-    val fileName = "data/targetRSS.csv"
-    for (line <- io.Source.fromFile(fileName).getLines()) {
+    for (line <- io.Source.fromFile(filename).getLines()) {
       val lineList = line.split(",")
       val act = system.actorOf(Props(new RSSGetter), lineList(0))
       //send name,url to actor for processing
       act ! RSSTarget(lineList(0),lineList(1))
     }
   }
-
-  //for debugging call once
-  RSSGo()
-  system.terminate()
-//  system.scheduler.schedule(0 seconds,10 minutes)(RSSGo)
-
-
 }
-
