@@ -20,8 +20,7 @@ object Boot extends App {
   implicit val system = ActorSystem("poli-service")
 
   /**
-    * start HTTP server with RestServiceActor.scala as handler
-    *
+    * start HTTP server with RestServiceActor.scala as router
     */
   val restService = system.actorOf(Props[RestServiceActor], "rest-server")
   implicit val executionContext = system.dispatcher
