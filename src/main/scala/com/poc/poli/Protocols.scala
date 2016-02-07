@@ -9,6 +9,7 @@ object Protocols {
 
   //classes used by HTTP server
   case object NotFound
+  case object NothingNew
   case class RSSRecord(id: String, title: String, link: String, description: String, pubDate: String)
 
   // for JSON (un)marshalling

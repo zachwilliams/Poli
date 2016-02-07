@@ -6,8 +6,6 @@ import scala.xml.XML
 import scala.concurrent.duration._
 
 
-
-
 // classes used by RSS Collector
 case class RSSTarget(tagetName: String, targetUrl: String)
 
@@ -23,13 +21,11 @@ class RSSGetter extends Actor with ActorLogging{
       val response = io.Source.fromURL(url).mkString
       val xmlResponse = XML.loadString(response)
 
-      println("writting file")
-
       //save the RSS file to the file system
-      val filename = "data/RSSXML/" + name + ".xml"
+      val filename = "data/RSSXML/" + name + ".rss"
       try{
 
-        log.info("writting to file " + filename)
+        log.info("writing to: " + filename)
         XML.save(filename, xmlResponse,"UTF-8")
 
       } catch { case e : Exception => log.error(e.toString) }
@@ -52,12 +48,7 @@ object RSSCollector{
 
 
   def start(filename: String) = {
-
-
-//  context.scheduler.schedule(0 seconds,10 minutes)(go(filename))
-  // for debugging use below
-  go(filename)
-  context.terminate()
+  context.scheduler.schedule(0 seconds,10 minutes)(go(filename))
 }
 
   /**

@@ -5,6 +5,8 @@ import spray.http.StatusCodes
 import spray.routing._
 import scala.collection.mutable.ListBuffer
 import scala.xml.XML
+import java.text.SimpleDateFormat
+import java.util.Calendar
 
 /**
   * REST Service actor.
@@ -28,45 +30,101 @@ trait RestService extends HttpService with ActorLogging { actor: Actor =>
 
     pathPrefix("rss"){
       pathPrefix("list") {
-        get { requestContext =>
-          val responder = context.actorOf(Props(new Responder(requestContext)))
-          responder ! rssList
+        pathEnd {
+          get { requestContext =>
+            val responder = context.actorOf(Props(new Responder(requestContext)))
+            responder ! rssList
+          }
         }
       } ~
         pathPrefix(Segment) { rssname =>
-          get { requestContext =>
-            val responder = context.actorOf(Props(new Responder(requestContext)))
-            isValid(rssList,rssname) match {
-              case true =>
-                val xml = getAllRSS(rssname)
-                responder ! buildFirstRSS(rssname,xml)
-              case _ => responder ! NotFound
+          // TODO complilation errors here !!!!!!!
+          // TODO probably need to re think how todo this processing !!!!!!!
+          var xml: Option[xml.Elem] = None: Option[xml.Elem]
+          isValid(rssList, rssname) match {
+            case true =>
+              xml = Some(getAllRSS(rssname))
+          }
+          pathEnd {
+            //TODO process request for all and return list of Record elements
+            get { requestContext =>
+              val responder = context.actorOf(Props(new Responder(requestContext)))
+              if (xml.isEmpty) {
+                responder ! NotFound
+              } else {
+                buildFirstRSS(rssname, xml.get, 1) match {
+                  case Some(record) => responder ! record
+                  case None => responder ! NothingNew
+                }
+              }
+            }
+          } ~
+          pathPrefix(Segment) {timestr =>
+            get { requestContext =>
+              val responder = context.actorOf(Props(new Responder(requestContext)))
+              if (xml.isEmpty) {
+                responder ! NotFound
+              } else {
+                toLong(timestr) match {  //convert time
+                  case Some(time) =>
+                    buildFirstRSS(rssname, xml.get, time) match {
+                      case Some(record) => responder ! record
+                      case None => responder ! NothingNew
+                    }
+                  case None => responder ! NotFound
+                }
+              }
             }
           }
         }
+      }
+    }
+
+  /**
+    * Convert string to long
+    * @param s String
+    * @return return some(long) or none
+    */
+  private def toLong(s: String): Option[Long] = {
+    try {
+      Some(s.toLong)
+    } catch {
+      case e: Exception => None
     }
   }
 
+
   /**
     * take full xml and return a RSSRecord which contains the fields
-    * from the most recent push from the RSS file
+    * from the most recent push from RSS file,
+    * compare time stamps from data/timestamps.csv from the RSS file
     * This is probably not the most efficient way to do this
     * (too handcodedy)
     *
     * @param fullxml entire RSS xml
-    * @return RSSRecord containing most recent values from RSS
+    * @return Option[RSSRecord] containing most recent values from RSS or
+    *         nothing if it is not newwer than given time stamp
     */
-  private def buildFirstRSS(target: String, fullxml: xml.Elem): RSSRecord = {
-    //TODO serious potential errors if tag names aren't correct
+  private def buildFirstRSS(target: String, fullxml: xml.Elem, giventime: Long): Option[RSSRecord]= {
+
+    // check  time stamp
+    val pubDate = fullxml \ "channel" \ "item" \ "pubDate"
+    val f = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss Z")
+    val date = f.parse(pubDate.head.text)
+    val rsstime = date.getTime
+    println(rsstime.toString)
+
+    // if this isn't a new record return nothing
+    if(rsstime<=giventime) return None
+
+
     //TODO this is bad to have all these hard coded
     val titles = fullxml \ "channel" \ "item" \ "title"
     val links = fullxml \ "channel" \ "item" \ "link"
-//    val descriptions = fullxml \ "channel" \ "item" \ "description"
-    val pubDate = fullxml \ "channel" \ "item" \ "pubDate"
+//    val descriptions = fullxnneml \ "channel" \ "item" \ "description"
 
     log.info("returning record with title: "+ titles.head.text)
-
-    RSSRecord(
+    val record = RSSRecord(
       target,
       titles.head.text,
       links.head.text,
@@ -74,7 +132,9 @@ trait RestService extends HttpService with ActorLogging { actor: Actor =>
 //      descriptions.head.text,
       pubDate.head.text
     )
+    Some(record)
   }
+
   /**
     * private function to get full xml text from the file
     *
@@ -85,10 +145,10 @@ trait RestService extends HttpService with ActorLogging { actor: Actor =>
 
     //get RSS file to the file system
     //TODO get rid of this hardcoded value!
-    val filename = "data/RSSXML/" + target + ".xml"
+    val filename = "data/RSSXML/" + target + ".rss"
     val xml = XML.loadFile(filename)
 
-    log.info("read RSS file: "+filename)
+    log.info("reading: "+filename)
     xml
   }
 
@@ -137,6 +197,11 @@ class Responder(requestContext:RequestContext) extends Actor with ActorLogging {
 
     case NotFound =>
       requestContext.complete(StatusCodes.NotFound)
+      self ! PoisonPill
+
+    // if we have no new object just don't return any JSON
+    case NothingNew =>
+      requestContext.complete(StatusCodes.OK)
       self ! PoisonPill
   }
 
